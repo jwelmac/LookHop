@@ -1,0 +1,226 @@
+"""System tray icon + app controller (pause, glasses, hotkey, calibration, panel)."""
+from __future__ import annotations
+
+import logging
+import subprocess
+import sys
+import threading
+
+import pystray
+from PIL import Image, ImageDraw
+from pystray import Menu, MenuItem as Item
+
+from lookhop.config import APP_NAME, CONFIG_PATH, LOG_PATH, SOURCE_ROOT, Config, self_command
+from lookhop.engine import LAPTOP, MONITOR, Engine
+from lookhop.platform import GlobalHotkey, open_file, parse_hotkey
+
+log = logging.getLogger(__name__)
+
+COLORS = {
+    LAPTOP: (77, 163, 255),
+    MONITOR: (76, 209, 122),
+    "paused": (140, 140, 150),
+    "warn": (255, 181, 71),
+    "error": (235, 87, 87),
+}
+
+
+def make_icon(color: tuple[int, int, int], look: str | None) -> Image.Image:
+    """An eye whose pupil points at the screen you're looking at (laptop = left)."""
+    img = Image.new("RGBA", (64, 64), (0, 0, 0, 0))
+    d = ImageDraw.Draw(img)
+    d.ellipse((3, 14, 61, 50), fill=(250, 250, 250, 255), outline=color + (255,), width=5)
+    cx = {LAPTOP: 22, MONITOR: 42}.get(look, 32)
+    d.ellipse((cx - 10, 22, cx + 10, 42), fill=color + (255,))
+    d.ellipse((cx - 4, 28, cx + 4, 36), fill=(20, 20, 25, 255))
+    return img
+
+
+class TrayApp:
+    def __init__(self, cfg: Config, engine: Engine):
+        from lookhop.ui import ControlPanel
+
+        self.cfg = cfg
+        self.engine = engine
+        self.hotkey: GlobalHotkey | None = None
+        self.hotkey_label: str | None = None
+        self._hotkey_lock = threading.Lock()
+        self._calibrating = False
+        self._icons: dict = {}
+        self._last_key = None
+
+        ok, msg = self._start_hotkey(cfg.hotkey)
+        if not ok:
+            log.error("Hotkey %s: %s", cfg.hotkey, msg)
+
+        self.panel = ControlPanel(cfg, engine, self)
+        self.icon = pystray.Icon(APP_NAME, self._icon_image(), APP_NAME, menu=self._menu())
+        engine.on_change = self.refresh
+
+    # ---------- appearance ----------
+    def _icon_key(self):
+        e = self.engine
+        if e.paused:
+            return "paused", None
+        if e.status in ("no_model", "error"):
+            return "error", None
+        if e.status != "running" or not e.face:
+            return "warn", e.state if e.status == "running" else None
+        return e.state, e.state
+
+    def _icon_image(self):
+        key = self._icon_key()
+        if key not in self._icons:
+            self._icons[key] = make_icon(COLORS[key[0]], key[1])
+        return self._icons[key]
+
+    def icon_image(self) -> Image.Image:
+        return make_icon(COLORS[MONITOR], MONITOR)
+
+    def status_text(self) -> str:
+        e = self.engine
+        if self._calibrating:
+            return "Calibrating…"
+        if e.paused:
+            return "Paused"
+        return {
+            "no_model": "Not calibrated",
+            "no_camera": "Camera unavailable (in use?)",
+            "error": "Face tracker error - see log",
+            "starting": "Starting…",
+        }.get(e.status, f"Looking at {e.state.capitalize()}" + ("" if e.face else " (no face)"))
+
+    def refresh(self) -> None:
+        key = (self._icon_key(), self.status_text())
+        if key == self._last_key:
+            return
+        self._last_key = key
+        try:
+            self.icon.icon = self._icon_image()
+            self.icon.title = f"{APP_NAME} - {self.status_text()}"
+            self.icon.update_menu()
+        except Exception:
+            log.debug("Tray refresh failed", exc_info=True)
+
+    def notify(self, message: str) -> None:
+        if not self.cfg.show_notifications:
+            return
+        try:
+            self.icon.notify(message, APP_NAME)
+        except Exception:
+            log.debug("Notification failed", exc_info=True)
+
+    # ---------- menu ----------
+    def _menu(self) -> Menu:
+        return Menu(
+            Item(lambda _i: self.status_text(), None, enabled=False),
+            Menu.SEPARATOR,
+            Item("Open control panel", self.open_panel, default=True),
+            Item(lambda _i: "Paused" + (f"   ({self.hotkey_label})" if self.hotkey_label else ""),
+                 self.toggle_pause, checked=lambda _i: self.engine.paused),
+            Item("Recalibrate…", self.recalibrate, enabled=lambda _i: not self._calibrating),
+            Menu.SEPARATOR,
+            Item("Quit", self._quit),
+        )
+
+    # ---------- controller API (also used by the control panel) ----------
+    def open_panel(self):
+        self.panel.show()
+
+    def toggle_pause(self):
+        self.engine.toggle_pause()
+        self.refresh()
+
+    def on_hotkey(self):
+        self.toggle_pause()
+        self.notify("Paused" if self.engine.paused else "Running")
+
+    def set_glasses(self, on: bool):
+        if on == self.cfg.glasses:
+            return
+        self.cfg.glasses = on
+        self.cfg.save()
+        self.engine.reload_model()
+        log.info("Glasses -> %s", on)
+        if self.engine.model is None:
+            self.notify("No calibration for this glasses setting yet - starting calibration.")
+            self.recalibrate()
+        else:
+            self.notify("Glasses " + ("on" if on else "off") + " - using that calibration.")
+        self.refresh()
+
+    def _start_hotkey(self, spec: str) -> tuple[bool, str]:
+        with self._hotkey_lock:
+            if self.hotkey is not None:
+                self.hotkey.stop()
+                self.hotkey.join(timeout=1)
+            self.hotkey, self.hotkey_label = None, None
+            try:
+                hk = GlobalHotkey(spec, self.on_hotkey)
+            except ValueError as e:
+                return False, str(e)
+            hk.start()
+            hk.ready.wait(2)
+            if not hk.ok:
+                return False, "Already used by another app"
+            self.hotkey, self.hotkey_label = hk, spec.title()
+            return True, ""
+
+    def set_hotkey(self, spec: str) -> tuple[bool, str]:
+        try:
+            parse_hotkey(spec)
+        except ValueError as e:
+            return False, str(e)
+        ok, msg = self._start_hotkey(spec)
+        if ok:
+            self.cfg.hotkey = spec
+            self.cfg.save()
+        else:
+            self._start_hotkey(self.cfg.hotkey)  # put the old one back
+        try:
+            self.icon.update_menu()
+        except Exception:
+            pass
+        return ok, msg
+
+    def open_config(self):
+        open_file(CONFIG_PATH)
+
+    def open_log(self):
+        open_file(LOG_PATH)
+
+    def recalibrate(self):
+        if self._calibrating:
+            return
+        self._calibrating = True
+        self.refresh()
+        threading.Thread(target=self._run_calibration, daemon=True).start()
+
+    def _run_calibration(self):
+        try:
+            self.cfg.save()  # the calibration process reads config.json
+            if not self.engine.release_camera():
+                log.warning("Camera did not close in time; calibration may fail to open it")
+            # Separate process: Tk wants its own main thread, and the tray owns ours.
+            rc = subprocess.run(self_command("calibrate"), cwd=str(SOURCE_ROOT)).returncode
+            self.engine.reload_model()
+            self.notify("Calibration saved." if rc == 0 else "Calibration cancelled.")
+        except Exception:
+            log.exception("Calibration failed")
+        finally:
+            self.engine.resume_camera()
+            self._calibrating = False
+            self.refresh()
+
+    def _quit(self):
+        self.panel.shutdown()
+        if self.hotkey is not None:
+            self.hotkey.stop()
+        self.icon.stop()
+
+    def run(self) -> None:
+        def setup(icon):
+            icon.visible = True
+            self.refresh()
+            self.notify("Running. Click the tray icon for the control panel.")
+        self.icon.run(setup=setup)

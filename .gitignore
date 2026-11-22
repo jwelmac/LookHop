@@ -1,0 +1,30 @@
+# Personal data - never commit.
+# config.json = your settings; data/ = calibration profiles (head/eye measurements) and logs.
+# (The app now keeps these in %APPDATA%\LookHop; these patterns cover older copies.)
+config.json
+data/
+*.log
+selftest.txt
+
+# Raw screen recordings - only the trimmed clip in assets/ is published.
+/demo.mp4
+/*.mov
+
+# Downloaded / generated. models/ holds the MediaPipe face model, fetched on first run.
+models/
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+
+# Build output. Binaries are published on GitHub Releases, not committed.
+build/
+dist/
+
+# Local tool and editor folders.
+.claude/
+.tokensave/
+.vscode/
+.idea/
+Thumbs.db
+desktop.ini

@@ -1,0 +1,5 @@
+# Tested versions. mediapipe pulls in opencv-contrib-python, numpy and
+# matplotlib; don't add opencv-python alongside it (both provide cv2).
+mediapipe==1.2.3
+pystray==0.19.5
+Pillow==12.3.0
