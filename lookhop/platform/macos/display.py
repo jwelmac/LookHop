@@ -25,6 +25,7 @@ def make_dpi_aware() -> None:
 
 
 def _display_names() -> dict[int, str]:
+    """Map CGDirectDisplayID -> friendly name (NSScreen.localizedName)."""
     names: dict[int, str] = {}
     try:
         from AppKit import NSScreen
@@ -37,6 +38,7 @@ def _display_names() -> dict[int, str]:
 
 
 def list_screens() -> list[Screen]:
+    """All active displays in top-left-origin global coordinates, same space as the cursor."""
     err, ids, count = Quartz.CGGetActiveDisplayList(32, None, None)
     if err != 0 or not count:
         return []
@@ -56,6 +58,7 @@ def list_screens() -> list[Screen]:
 
 
 def get_cursor() -> tuple[int, int] | None:
+    """Current cursor position, or None if it can't be read."""
     ev = Quartz.CGEventCreate(None)
     if ev is None:
         return None
@@ -64,12 +67,14 @@ def get_cursor() -> tuple[int, int] | None:
 
 
 def set_cursor(x: int, y: int) -> None:
+    """Move the cursor to (x, y) without generating mouse events."""
     Quartz.CGWarpMouseCursorPosition((float(x), float(y)))
     # A warp briefly freezes the cursor unless mouse and cursor are re-associated.
     Quartz.CGAssociateMouseAndMouseCursorPosition(True)
 
 
 def mouse_button_down() -> bool:
+    """True while any mouse button is held (never jump mid-drag)."""
     return any(Quartz.CGEventSourceButtonState(_SRC, b) for b in _BUTTONS)
 
 
@@ -96,4 +101,5 @@ def last_input_tick() -> int:
 
 
 def message_box(text: str, title: str, error: bool = False) -> None:
+    """Show an info or error dialog (Tk)."""
     tk_message_box(text, title, error)

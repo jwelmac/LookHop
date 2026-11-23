@@ -15,6 +15,7 @@ GREEN = (76, 209, 122)
 
 
 def render(size: int = 1024) -> Image.Image:
+    """Draw the eye logo at `size` pixels."""
     s = size / 64  # designed on a 64px grid, rendered large and downsampled
     img = Image.new("RGBA", (size, size), (0, 0, 0, 0))
     d = ImageDraw.Draw(img)
@@ -33,6 +34,7 @@ def render(size: int = 1024) -> Image.Image:
 
 
 def main() -> None:
+    """Write logo.png, lookhop.ico and lookhop.icns (or only the icns with --icns-only)."""
     ASSETS.mkdir(exist_ok=True)
     big = render()
     if "--icns-only" in sys.argv:  # macOS build: leave the committed png/ico alone

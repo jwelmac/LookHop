@@ -16,6 +16,7 @@ ACCESSIBILITY_PANE = "x-apple.systempreferences:com.apple.preference.security?Pr
 
 
 def accessibility_trusted(prompt: bool = False) -> bool:
+    """True if LookHop may control other apps; with prompt=True macOS asks the user."""
     from ApplicationServices import AXIsProcessTrustedWithOptions, kAXTrustedCheckOptionPrompt
     return bool(AXIsProcessTrustedWithOptions({kAXTrustedCheckOptionPrompt: prompt}))
 

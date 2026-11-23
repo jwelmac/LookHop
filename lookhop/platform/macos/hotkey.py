@@ -53,7 +53,9 @@ def parse_hotkey(spec: str) -> tuple[int, int]:
 
 
 class GlobalHotkey(threading.Thread):
+    """Global hotkey thread built on a Quartz event tap (needs Accessibility permission)."""
     def __init__(self, spec: str, callback):
+        """Parse `spec` (e.g. 'ctrl+alt+g'); raises ValueError for a bad spec."""
         super().__init__(daemon=True, name="hotkey")
         self.spec = spec
         self.mods, self.code = parse_hotkey(spec)
@@ -64,6 +66,7 @@ class GlobalHotkey(threading.Thread):
         self._tap = None
 
     def _on_event(self, _proxy, etype, event, _refcon):
+        """Event-tap callback: swallow and handle the hotkey, pass everything else through."""
         if etype in (Quartz.kCGEventTapDisabledByTimeout, Quartz.kCGEventTapDisabledByUserInput):
             Quartz.CGEventTapEnable(self._tap, True)  # macOS switches slow taps off
             return event
@@ -80,6 +83,7 @@ class GlobalHotkey(threading.Thread):
         return event
 
     def run(self) -> None:
+        """Create the tap and run its run loop; `ok` stays False if the tap can't be created."""
         self._tap = Quartz.CGEventTapCreate(
             Quartz.kCGSessionEventTap, Quartz.kCGHeadInsertEventTap,
             Quartz.kCGEventTapOptionDefault, Quartz.CGEventMaskBit(Quartz.kCGEventKeyDown),
@@ -102,5 +106,6 @@ class GlobalHotkey(threading.Thread):
             Quartz.CFRunLoopRemoveSource(self._loop, source, Quartz.kCFRunLoopCommonModes)
 
     def stop(self) -> None:
+        """Stop the run loop so the thread exits."""
         if self._loop is not None:
             Quartz.CFRunLoopStop(self._loop)

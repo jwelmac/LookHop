@@ -11,10 +11,12 @@ PLIST = Path.home() / "Library" / "LaunchAgents" / f"{LABEL}.plist"
 
 
 def autostart_enabled() -> bool:
+    """True if the LaunchAgent plist exists."""
     return PLIST.exists()
 
 
 def set_autostart(enabled: bool) -> None:
+    """Create or remove the per-user LaunchAgent that starts LookHop at login."""
     if not enabled:
         PLIST.unlink(missing_ok=True)
         return

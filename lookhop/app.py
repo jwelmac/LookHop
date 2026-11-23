@@ -20,6 +20,7 @@ log = logging.getLogger(APP_NAME)
 
 
 def setup_logging() -> None:
+    """Log to a rotating file in the data folder (and stderr when there is a console)."""
     LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
     handlers: list[logging.Handler] = [
         RotatingFileHandler(LOG_PATH, maxBytes=1_000_000, backupCount=2, encoding="utf-8")]
@@ -86,6 +87,7 @@ def selftest() -> int:
 
 
 def main(argv=None) -> int:
+    """CLI entry point: parse args, check the OS layer, then calibrate / run the tray app."""
     parser = argparse.ArgumentParser(prog=APP_NAME.lower(), description=__doc__,
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("command", nargs="?", choices=["run", "calibrate"], default="run")

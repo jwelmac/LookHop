@@ -41,6 +41,7 @@ def _normal_windows() -> list[dict]:
 
 
 def _overlap(b, s: Screen) -> float:
+    """Area of the window rectangle `b` that lies on screen `s`."""
     w = min(b["X"] + b["Width"], s.right) - max(b["X"], s.left)
     h = min(b["Y"] + b["Height"], s.bottom) - max(b["Y"], s.top)
     return max(w, 0) * max(h, 0)
@@ -54,6 +55,7 @@ def _on_screen(w: dict, screen: Screen, screens: list[Screen]) -> bool:
 
 
 def _ax_point_size(ax_win):
+    """Position and size of an Accessibility window element, or (None, None)."""
     def get(attr, kind):
         err, val = AXUIElementCopyAttributeValue(ax_win, attr, None)
         if err or val is None:
@@ -64,6 +66,7 @@ def _ax_point_size(ax_win):
 
 
 def _raise_window(pid: int, bounds) -> bool:
+    """Make the app frontmost via Accessibility and raise the window matching `bounds`."""
     app = AXUIElementCreateApplication(pid)
     if AXUIElementSetAttributeValue(app, "AXFrontmost", True) != 0:
         return False
@@ -81,6 +84,7 @@ def _raise_window(pid: int, bounds) -> bool:
 
 
 def _activate(w: dict) -> bool:
+    """Bring the app owning window `w` to the front (Accessibility first, then NSRunningApplication)."""
     pid = int(w[Quartz.kCGWindowOwnerPID])
     try:
         if _raise_window(pid, w[Quartz.kCGWindowBounds]):

@@ -35,6 +35,7 @@ def acquire_single_instance(app_name: str):
 
 
 def check_permissions(need_accessibility: bool = True) -> bool:
+    """Ask for Camera (and optionally Accessibility); False if something is missing."""
     return permissions.check_permissions(message_box, need_accessibility)
 
 

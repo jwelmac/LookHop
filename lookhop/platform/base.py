@@ -7,6 +7,7 @@ from dataclasses import dataclass
 
 @dataclass(frozen=True)
 class Screen:
+    """One display: name plus its rectangle in the shared virtual-desktop coordinate space."""
     name: str
     left: int
     top: int
@@ -16,21 +17,26 @@ class Screen:
 
     @property
     def width(self) -> int:
+        """Width in pixels (points on macOS)."""
         return self.right - self.left
 
     @property
     def height(self) -> int:
+        """Height in pixels (points on macOS)."""
         return self.bottom - self.top
 
     @property
     def area(self) -> int:
+        """Width x height, used to pick the larger display as the monitor."""
         return self.width * self.height
 
     @property
     def center(self) -> tuple[int, int]:
+        """Centre point of the display."""
         return self.left + self.width // 2, self.top + self.height // 2
 
     def contains(self, x: int, y: int) -> bool:
+        """True if the point (x, y) is on this display."""
         return self.left <= x < self.right and self.top <= y < self.bottom
 
 
@@ -54,6 +60,7 @@ def resolve_roles(screens: list[Screen], laptop_display: str) -> tuple[Screen | 
 
 
 def screen_at(screens: list[Screen], x: int, y: int) -> Screen | None:
+    """The display containing (x, y), or None."""
     return next((s for s in screens if s.contains(x, y)), None)
 
 

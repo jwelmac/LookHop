@@ -35,7 +35,9 @@ FONT_B = ui_font(9, True)
 
 
 class ControlPanel:
+    """Control panel window: live view and every setting, applied immediately."""
     def __init__(self, cfg: Config, engine: Engine, controller):
+        """Remember the config, engine and controller; the window is built later."""
         self.cfg = cfg
         self.engine = engine
         self.ctl = controller  # TrayApp: toggle_pause, recalibrate, set_glasses, set_hotkey, ...
@@ -50,6 +52,7 @@ class ControlPanel:
         self._q.put(fn)
 
     def show(self) -> None:
+        """Show the panel (creating the Tk thread on first use outside macOS)."""
         if self.on_main_thread:
             self._q.put("show")
         elif self._thread is None or not self._thread.is_alive():
@@ -59,6 +62,7 @@ class ControlPanel:
             self._q.put("show")
 
     def shutdown(self) -> None:
+        """Close the panel and stop its loop."""
         self._q.put("quit")
         if self._thread is not None:
             self._thread.join(timeout=2)
@@ -77,6 +81,7 @@ class ControlPanel:
         self._run(prebuilt=True)
 
     def _run(self, prebuilt: bool = False) -> None:
+        """Build the window and run Tk's main loop."""
         try:
             if not prebuilt:
                 self.root = tk.Tk()
@@ -94,6 +99,7 @@ class ControlPanel:
                 pass
 
     def _show(self) -> None:
+        """Bring the window to the front and start the live preview."""
         self._visible = True
         self.root.deiconify()
         self.root.lift()
@@ -107,12 +113,14 @@ class ControlPanel:
         self.engine.ui_preview = self.show_cam.get()
 
     def _hide(self) -> None:
+        """Hide the window, stop the preview and save pending changes."""
         self._visible = False
         self.engine.ui_preview = False
         self._flush_save()
         self.root.withdraw()
 
     def _tick(self) -> None:
+        """Timer: handle queued messages and refresh the live view."""
         try:
             while True:
                 msg = self._q.get_nowait()
@@ -138,6 +146,7 @@ class ControlPanel:
 
     # ---------- layout ----------
     def _build(self) -> None:
+        """Create the window, styles and tabs."""
         root = self.root
         root.title(APP_NAME)
         root.protocol("WM_DELETE_WINDOW", self._hide)
@@ -203,12 +212,14 @@ class ControlPanel:
         self._screens_at = time.monotonic()
 
     def _tab(self, title: str) -> ttk.Frame:
+        """Add a notebook tab and return its frame."""
         f = ttk.Frame(self.nb, padding=10)
         f.columnconfigure(1, weight=1)
         self.nb.add(f, text=title)
         return f
 
     def _build_behaviour(self, f: ttk.Frame) -> None:
+        """Behaviour tab: mode, jump target, typing guard, glasses, recalibrate."""
         r = 0
         ttk.Label(f, text="Jump the cursor", style="Section.TLabel").grid(row=r, column=0, columnspan=3, sticky="w")
         r += 1
@@ -264,6 +275,7 @@ class ControlPanel:
         self.calib_lbl.pack(side="left", padx=10)
 
     def _build_tuning(self, f: ttk.Frame) -> None:
+        """Tuning tab: sliders for hold times and thresholds."""
         ttk.Label(f, text="Lower hold times feel snappier; higher ones mean fewer accidental jumps.",
                   style="Muted.TLabel").grid(row=0, column=0, columnspan=3, sticky="w", pady=(0, 6))
         ms = lambda v: f"{v:.0f} ms"
@@ -285,6 +297,7 @@ class ControlPanel:
             self._slider(f, i, *row)
 
     def _build_system(self, f: ttk.Frame) -> None:
+        """System tab: displays, camera, hotkey, autostart, notifications, files."""
         r = 0
         ttk.Label(f, text="Laptop display").grid(row=r, column=0, sticky="w", pady=3)
         names = ["left", "right", "primary"] + [s.name for s in list_screens()]
@@ -326,6 +339,7 @@ class ControlPanel:
 
     # ---------- widgets bound to config ----------
     def _slider(self, f, row, key, label, lo, hi, step, fmt):
+        """Add a labelled slider for a numeric setting."""
         is_int = isinstance(getattr(Config(), key), int)
         var = tk.DoubleVar(value=getattr(self.cfg, key))
         ttk.Label(f, text=label).grid(row=row, column=0, sticky="w", pady=2)
@@ -348,12 +362,14 @@ class ControlPanel:
         self._vars[key] = (var, lambda: (var.set(getattr(self.cfg, key)), show(getattr(self.cfg, key))))
 
     def _check(self, f, row, key, text):
+        """Add a checkbox bound to a boolean setting."""
         var = tk.BooleanVar(value=getattr(self.cfg, key))
         ttk.Checkbutton(f, text=text, variable=var, command=lambda: self._set(key, bool(var.get()))
                         ).grid(row=row, column=0, columnspan=3, sticky="w", padx=(10, 0), pady=(4, 0))
         self._vars[key] = (var, lambda: var.set(getattr(self.cfg, key)))
 
     def _set(self, key: str, value) -> None:
+        """Apply a changed setting to the config and engine, and schedule a save."""
         setattr(self.cfg, key, value)
         # keep the two thresholds consistent (exit must not exceed enter)
         if key == "laptop_enter_prob" and self.cfg.laptop_exit_prob > value:
@@ -372,6 +388,7 @@ class ControlPanel:
         self._save_job = self.root.after(500, self._flush_save)
 
     def _flush_save(self) -> None:
+        """Write the settings to disk now."""
         if self._save_job is not None:
             try:
                 self.root.after_cancel(self._save_job)
@@ -384,6 +401,7 @@ class ControlPanel:
             log.exception("Could not save settings")
 
     def _reset_tuning(self) -> None:
+        """Restore the tuning sliders to their defaults."""
         defaults = Config()
         for key in TUNING_KEYS:
             setattr(self.cfg, key, getattr(defaults, key))
@@ -394,9 +412,11 @@ class ControlPanel:
 
     # ---------- actions ----------
     def _toggle_pause(self) -> None:
+        """Pause/resume from the panel."""
         self.ctl.toggle_pause()
 
     def _cam_toggled(self) -> None:
+        """Turn the live camera preview on or off."""
         on = self.show_cam.get()
         self.engine.ui_preview = on and self._visible
         if on:
@@ -407,6 +427,7 @@ class ControlPanel:
             self._cam_photo = None
 
     def _apply_hotkey(self) -> None:
+        """Apply the hotkey typed into the box and show the result."""
         ok, msg = self.ctl.set_hotkey(self.hotkey_var.get().strip())
         self.hotkey_msg.config(text="Saved ✓" if ok else msg,
                                foreground="" if ok else WARN)
@@ -414,6 +435,7 @@ class ControlPanel:
             self.hotkey_var.set(self.cfg.hotkey)
 
     def _toggle_autostart(self) -> None:
+        """Turn start-at-login on or off."""
         try:
             set_autostart(self.autostart_var.get())
         except OSError:
@@ -422,6 +444,7 @@ class ControlPanel:
 
     # ---------- live view ----------
     def _update_live(self) -> None:
+        """Refresh status, preview, map and bar from the engine."""
         e = self.engine
         now = time.monotonic()
         if now - self._screens_at > 2.0:
@@ -459,6 +482,7 @@ class ControlPanel:
                 self.cam_lbl.configure(image=self._cam_photo)
 
     def _draw_map(self, running: bool) -> None:
+        """Draw the display layout with the current gaze target highlighted."""
         c = self.map
         c.delete("all")
         W, H = int(c["width"]), int(c["height"])
@@ -494,6 +518,7 @@ class ControlPanel:
             c.create_oval(x - 4, y - 4, x + 4, y + 4, fill="#ff5a5a", outline="white")
 
     def _draw_bar(self, running: bool) -> None:
+        """Draw the laptop-vs-monitor probability bar."""
         c = self.bar
         c.delete("all")
         W, H = int(c["width"]), int(c["height"])

@@ -37,7 +37,9 @@ def make_icon(color: tuple[int, int, int], look: str | None) -> Image.Image:
 
 
 class TrayApp:
+    """Tray / menu-bar icon plus the app controller (pause, glasses, hotkey, calibration, panel)."""
     def __init__(self, cfg: Config, engine: Engine):
+        """Start the hotkey, create the control panel and the tray icon."""
         from lookhop.ui import ControlPanel
 
         self.cfg = cfg
@@ -65,6 +67,7 @@ class TrayApp:
 
     # ---------- appearance ----------
     def _icon_key(self):
+        """Cache key describing which icon the current engine state needs."""
         e = self.engine
         if e.paused:
             return "paused", None
@@ -75,15 +78,18 @@ class TrayApp:
         return e.state, e.state
 
     def _icon_image(self):
+        """The icon image for the current state (cached)."""
         key = self._icon_key()
         if key not in self._icons:
             self._icons[key] = make_icon(COLORS[key[0]], key[1])
         return self._icons[key]
 
     def icon_image(self) -> Image.Image:
+        """The app icon shown in the control panel's title bar."""
         return make_icon(COLORS[MONITOR], MONITOR)
 
     def status_text(self) -> str:
+        """One-line status for the menu and tooltip."""
         e = self.engine
         if self._calibrating:
             return "Calibrating…"
@@ -97,6 +103,7 @@ class TrayApp:
         }.get(e.status, f"Looking at {e.state.capitalize()}" + ("" if e.face else " (no face)"))
 
     def refresh(self) -> None:
+        """Update the icon, tooltip and menu if anything changed (any thread)."""
         key = (self._icon_key(), self.status_text())
         if key == self._last_key:
             return
@@ -107,6 +114,7 @@ class TrayApp:
             self._apply_refresh()
 
     def _apply_refresh(self) -> None:
+        """Do the actual icon/menu update (on the main thread on macOS)."""
         try:
             self.icon.icon = self._icon_image()
             self.icon.title = f"{APP_NAME} - {self.status_text()}"
@@ -115,6 +123,7 @@ class TrayApp:
             log.debug("Tray refresh failed", exc_info=True)
 
     def notify(self, message: str) -> None:
+        """Show a desktop notification if enabled."""
         if not self.cfg.show_notifications:
             return
         try:
@@ -124,6 +133,7 @@ class TrayApp:
 
     # ---------- menu ----------
     def _menu(self) -> Menu:
+        """Build the tray menu."""
         return Menu(
             Item(lambda _i: self.status_text(), None, enabled=False),
             Menu.SEPARATOR,
@@ -137,17 +147,21 @@ class TrayApp:
 
     # ---------- controller API (also used by the control panel) ----------
     def open_panel(self):
+        """Show the control panel."""
         self.panel.show()
 
     def toggle_pause(self):
+        """Pause or resume tracking."""
         self.engine.toggle_pause()
         self.refresh()
 
     def on_hotkey(self):
+        """Hotkey handler: toggle pause and say so."""
         self.toggle_pause()
         self.notify("Paused" if self.engine.paused else "Running")
 
     def set_glasses(self, on: bool):
+        """Switch glasses mode and load (or start calibrating) that profile."""
         if on == self.cfg.glasses:
             return
         self.cfg.glasses = on
@@ -162,6 +176,7 @@ class TrayApp:
         self.refresh()
 
     def _start_hotkey(self, spec: str) -> tuple[bool, str]:
+        """(Re)register the global hotkey; returns (ok, message)."""
         with self._hotkey_lock:
             if self.hotkey is not None:
                 self.hotkey.stop()
@@ -181,6 +196,7 @@ class TrayApp:
             return True, ""
 
     def set_hotkey(self, spec: str) -> tuple[bool, str]:
+        """Validate and apply a new hotkey, keeping the old one if it fails."""
         try:
             parse_hotkey(spec)
         except ValueError as e:
@@ -198,12 +214,15 @@ class TrayApp:
         return ok, msg
 
     def open_config(self):
+        """Open config.json in the default app."""
         open_file(CONFIG_PATH)
 
     def open_log(self):
+        """Open the log file in the default app."""
         open_file(LOG_PATH)
 
     def recalibrate(self):
+        """Run calibration in a separate process."""
         if self._calibrating:
             return
         self._calibrating = True
@@ -211,6 +230,7 @@ class TrayApp:
         threading.Thread(target=self._run_calibration, daemon=True).start()
 
     def _run_calibration(self):
+        """Release the camera, run the calibration process, then reload the model."""
         try:
             self.cfg.save()  # the calibration process reads config.json
             if not self.engine.release_camera():
@@ -227,6 +247,7 @@ class TrayApp:
             self.refresh()
 
     def _quit(self):
+        """Quit the app: stop the hotkey, the panel and the tray."""
         if self.hotkey is not None:
             self.hotkey.stop()
         if sys.platform == "darwin":
@@ -237,6 +258,7 @@ class TrayApp:
         self.icon.stop()
 
     def run(self) -> None:
+        """Run the tray (blocks until Quit); on macOS Tk's loop drives it."""
         def setup(icon):
             icon.visible = True
             self.refresh()

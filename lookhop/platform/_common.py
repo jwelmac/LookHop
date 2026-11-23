@@ -17,5 +17,6 @@ def tk_message_box(text: str, title: str, error: bool = False) -> None:
 
 
 def open_file(path: Path) -> None:
+    """Open a file with the default app (`open` on macOS, `xdg-open` elsewhere)."""
     opener = "open" if sys.platform == "darwin" else "xdg-open"
     subprocess.Popen([opener, str(path)])

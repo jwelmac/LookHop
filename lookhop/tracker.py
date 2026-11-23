@@ -47,6 +47,7 @@ EYE_L = (362, 263, 473)  # left eye: inner corner -> outer corner
 
 
 def ensure_model() -> Path:
+    """Path of the face model, downloading it on first use if it isn't bundled."""
     for path in (BUNDLED_MODEL, MODEL_PATH):
         if path.exists() and path.stat().st_size > 1_000_000:
             return path
@@ -66,11 +67,14 @@ def ensure_model() -> Path:
 
 
 class Camera:
+    """Webcam capture through OpenCV."""
     def __init__(self, index: int, width: int, height: int, fps: float | None = None):
+        """Remember the camera index, requested size and frame rate."""
         self.index, self.width, self.height, self.fps = index, width, height, fps
         self.cap: cv2.VideoCapture | None = None
 
     def open(self) -> bool:
+        """Open the camera; True if frames can be read."""
         for backend in CAMERA_BACKENDS:
             cap = cv2.VideoCapture(self.index, backend)
             if not cap.isOpened():
@@ -90,18 +94,21 @@ class Camera:
         return False
 
     def read(self) -> np.ndarray | None:
+        """The latest frame as a BGR array, or None if unavailable."""
         if self.cap is None:
             return None
         ok, frame = self.cap.read()
         return frame if ok else None
 
     def close(self) -> None:
+        """Release the camera."""
         if self.cap is not None:
             self.cap.release()
             self.cap = None
 
 
 def head_angles(matrix: np.ndarray) -> tuple[float, float]:
+    """Yaw and pitch in degrees from MediaPipe's face transform matrix."""
     R = np.asarray(matrix, float)[:3, :3]
     R = R / np.linalg.norm(R, axis=0, keepdims=True)  # strip any scale
     yaw = np.degrees(np.arcsin(np.clip(-R[2, 0], -1.0, 1.0)))
@@ -114,6 +121,7 @@ def head_angles(matrix: np.ndarray) -> tuple[float, float]:
 
 
 def _eye_ratio(pts: np.ndarray, eye: tuple[int, int, int]) -> tuple[float, float]:
+    """Iris position inside one eye relative to its corners (horizontal, vertical)."""
     a, b, iris = pts[eye[0]], pts[eye[1]], pts[eye[2]]
     axis = b - a
     length = float(np.hypot(*axis))
@@ -127,13 +135,16 @@ def _eye_ratio(pts: np.ndarray, eye: tuple[int, int, int]) -> tuple[float, float
 
 
 def iris_ratios(pts: np.ndarray) -> tuple[float, float]:
+    """Iris position averaged over both eyes."""
     h1, v1 = _eye_ratio(pts, EYE_R)
     h2, v2 = _eye_ratio(pts, EYE_L)
     return (h1 + h2) / 2, (v1 + v2) / 2
 
 
 class FaceFeatures:
+    """MediaPipe Face Landmarker wrapper: frame -> [yaw, pitch, iris_h, iris_v]."""
     def __init__(self):
+        """Load the face model and create the landmarker."""
         import mediapipe as mp
         from mediapipe.tasks import python as mp_python
         from mediapipe.tasks.python import vision
@@ -154,6 +165,7 @@ class FaceFeatures:
         self.last_points: np.ndarray | None = None  # pixel coords, for the preview
 
     def process(self, frame_bgr: np.ndarray) -> np.ndarray | None:
+        """Features for one BGR frame, or None when no face is found."""
         ts = int(time.monotonic() * 1000)
         if ts <= self._last_ts:
             ts = self._last_ts + 1
@@ -178,4 +190,5 @@ class FaceFeatures:
         return np.array([yaw, pitch, iris_h, iris_v])
 
     def close(self) -> None:
+        """Free the landmarker."""
         self._landmarker.close()

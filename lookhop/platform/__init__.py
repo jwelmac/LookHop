@@ -43,6 +43,7 @@ else:
 
 if "check_permissions" not in globals():  # only macOS needs one
     def check_permissions(need_accessibility: bool = True) -> bool:
+        """Default: nothing to ask for (only macOS has privacy permissions)."""
         return True
 
 __all__ = ["Screen", "resolve_roles", "screen_at", "ui_font", "check_permissions",
