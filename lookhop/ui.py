@@ -300,7 +300,8 @@ class ControlPanel:
         """System tab: displays, camera, hotkey, autostart, notifications, files."""
         r = 0
         ttk.Label(f, text="Laptop display").grid(row=r, column=0, sticky="w", pady=3)
-        names = ["left", "right", "primary"] + [s.name for s in list_screens()]
+        names = (["left", "right", "primary"] + (["builtin"] if sys.platform == "darwin" else [])
+                 + [s.name for s in list_screens()])
         self.display_var = tk.StringVar(value=self.cfg.laptop_display)
         cb = ttk.Combobox(f, values=names, textvariable=self.display_var, state="readonly", width=18)
         cb.grid(row=r, column=1, sticky="w", pady=3)

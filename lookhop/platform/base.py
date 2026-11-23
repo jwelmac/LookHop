@@ -14,6 +14,7 @@ class Screen:
     right: int
     bottom: int
     primary: bool
+    builtin: bool = False  # the computer's own display (known on macOS)
 
     @property
     def width(self) -> int:
@@ -49,6 +50,8 @@ def resolve_roles(screens: list[Screen], laptop_display: str) -> tuple[Screen | 
         laptop = max(screens, key=lambda s: s.right)
     elif key == "primary":
         laptop = next((s for s in screens if s.primary), screens[0])
+    elif key == "builtin":  # the computer's own display; falls back to the leftmost if unknown
+        laptop = next((s for s in screens if s.builtin), min(screens, key=lambda s: s.left))
     elif key == "left":
         laptop = min(screens, key=lambda s: s.left)
     else:

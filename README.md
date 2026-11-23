@@ -62,7 +62,7 @@ LookHop uses the webcam you already have to see **which screen you're facing**, 
 
 > The app is ad-hoc signed, so macOS may ask you to grant the permissions again after you install an update (remove the old *LookHop* entry and add it again if the switch looks on but nothing works). Running from source? The permissions belong to the terminal you start it from.
 >
-> macOS puts your **menu-bar display** as "primary". If the wrong screen is treated as the laptop, set *Laptop display* (System tab) to `primary`: the default `left` goes by physical arrangement in *Displays → Arrange*.
+> The Mac's **built-in display** is treated as the laptop and the other display as your monitor. If that's the wrong way round, change *Laptop display* (System tab).
 
 ## Quick start (Windows)
 
@@ -152,7 +152,7 @@ powershell -ExecutionPolicy Bypass -File packaging\windows\build.ps1
 | `quick_jump` / `quick_jump_prob` | `true` / 0.85 | Mouse mode: skip the hold time when one frame is this confident as you grab the mouse |
 | `glasses` | `false` | Use the glasses profile and lower iris weight |
 | `hotkey` | `ctrl+alt+g` | Pause/resume hotkey, e.g. `win+shift+f9` |
-| `laptop_display` | `left` | `left`, `right`, `primary`, or a device name like `\\.\DISPLAY1` |
+| `laptop_display` | `left` (macOS: `builtin`) | `left`, `right`, `primary`, `builtin` (the computer's own display, macOS), or a device name like `\\.\DISPLAY1` |
 | `fps` / `idle_fps` | 15 / 5 | Analysis rate with / without a face in view |
 | `laptop_enter_prob` / `laptop_exit_prob` | 0.70 / 0.35 | Switching thresholds (hysteresis) |
 | `laptop_dwell_ms` / `monitor_dwell_ms` | 150 / 200 | How long a look must hold before it counts |

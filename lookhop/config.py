@@ -87,9 +87,11 @@ class Config:
     # Each setting has its own calibration profile.
     glasses: bool = False
     hotkey: str = "ctrl+alt+g"
-    # Which display is the laptop: "left", "right", "primary", or a device
-    # name like "\\\\.\\DISPLAY1". The largest other display is the monitor.
-    laptop_display: str = "left"
+    # Which display is the laptop: "left", "right", "primary", "builtin" (the computer's own
+    # display, macOS), or a device name like "\\\\.\\DISPLAY1". The largest other display is
+    # the monitor. On macOS the default is the built-in display, since the physical layout
+    # (which side the monitor sits on) says nothing about which one is the laptop.
+    laptop_display: str = "builtin" if sys.platform == "darwin" else "left"
     # Where the cursor lands: the "last" place it was on that screen, or the
     # "center" of the screen.
     warp_to: str = "last"

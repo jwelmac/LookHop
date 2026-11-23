@@ -53,7 +53,7 @@ def list_screens() -> list[Screen]:
         name = base if seen[base] == 1 else f"{base} ({seen[base]})"  # two identical monitors
         left, top = int(r.origin.x), int(r.origin.y)
         screens.append(Screen(name, left, top, left + int(r.size.width), top + int(r.size.height),
-                              int(did) == int(main)))
+                              int(did) == int(main), bool(Quartz.CGDisplayIsBuiltin(did))))
     return screens
 
 
