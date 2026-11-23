@@ -7,12 +7,9 @@ itself, or Terminal/iTerm/your IDE when running from source.
 from __future__ import annotations
 
 import logging
-import subprocess
 import threading
 
 log = logging.getLogger(__name__)
-
-ACCESSIBILITY_PANE = "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility"
 
 
 def accessibility_trusted(prompt: bool = False) -> bool:
@@ -52,10 +49,13 @@ def check_permissions(message_box, need_accessibility: bool = True) -> bool:
         message_box("LookHop needs camera access to see where you look.\n\n"
                     "Enable it under System Settings > Privacy & Security > Camera, "
                     "then restart LookHop.", "LookHop", True)
-    if need_accessibility and not accessibility_trusted(prompt=True):
+    # Check silently first: when the permission is already granted nothing is shown at all.
+    # Only if it is missing do we ask (macOS's own prompt has an "Open System Settings"
+    # button, so we don't also open the pane ourselves).
+    if need_accessibility and not accessibility_trusted(prompt=False):
+        accessibility_trusted(prompt=True)
         ok = False
         log.warning("Accessibility permission missing - focus and hotkey won't work")
-        subprocess.Popen(["open", ACCESSIBILITY_PANE])
         message_box("LookHop needs the Accessibility permission to switch app focus between "
                     "screens and to listen for the pause hotkey.\n\n"
                     "Enable LookHop (or the terminal you started it from) under System "

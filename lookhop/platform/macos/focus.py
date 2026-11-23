@@ -7,6 +7,7 @@ Needs the Accessibility permission to raise windows of other apps.
 from __future__ import annotations
 
 import logging
+import os
 
 import Quartz
 from AppKit import NSRunningApplication, NSWorkspace
@@ -26,13 +27,18 @@ MIN_SIZE = 80  # ignore tiny helper windows
 
 
 def _normal_windows() -> list[dict]:
-    """On-screen, ordinary app windows, front-most first."""
+    """On-screen, ordinary app windows, front-most first.
+
+    LookHop's own windows (the control panel) are left out: focusing runs on a background
+    thread, and raising a Tk window from there crashes inside AppKit (Tk is main-thread only).
+    """
     opts = (Quartz.kCGWindowListOptionOnScreenOnly
             | Quartz.kCGWindowListExcludeDesktopElements)
     out = []
     for w in Quartz.CGWindowListCopyWindowInfo(opts, Quartz.kCGNullWindowID) or []:
         b = w.get(Quartz.kCGWindowBounds)
-        if (w.get(Quartz.kCGWindowLayer, 1) != 0 or w.get(Quartz.kCGWindowAlpha, 1) <= 0
+        if (w.get(Quartz.kCGWindowOwnerPID) == os.getpid()
+                or w.get(Quartz.kCGWindowLayer, 1) != 0 or w.get(Quartz.kCGWindowAlpha, 1) <= 0
                 or w.get(Quartz.kCGWindowOwnerName) in SKIP_OWNERS or not b
                 or b["Width"] < MIN_SIZE or b["Height"] < MIN_SIZE):
             continue
