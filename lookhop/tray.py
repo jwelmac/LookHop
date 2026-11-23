@@ -10,7 +10,8 @@ import pystray
 from PIL import Image, ImageDraw
 from pystray import Menu, MenuItem as Item
 
-from lookhop.config import APP_NAME, CONFIG_PATH, LOG_PATH, SOURCE_ROOT, Config, self_command
+from lookhop.config import (APP_NAME, CONFIG_PATH, LOG_PATH, SOURCE_ROOT, Config, load_config,
+                            self_command)
 from lookhop.engine import LAPTOP, MONITOR, Engine
 from lookhop.platform import GlobalHotkey, open_file, parse_hotkey
 
@@ -251,6 +252,9 @@ class TrayApp:
                 log.warning("Camera did not close in time; calibration may fail to open it")
             # Separate process: Tk wants its own main thread (the tray or the panel owns ours).
             rc = subprocess.run(self_command("calibrate"), cwd=str(SOURCE_ROOT)).returncode
+            chosen = load_config().camera_name  # the calibration process may have asked which camera
+            if chosen != self.cfg.camera_name:
+                self.cfg.camera_name = chosen
             self.engine.reload_model()
             self.notify("Calibration saved." if rc == 0 else "Calibration cancelled.")
         except Exception:

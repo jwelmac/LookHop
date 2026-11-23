@@ -30,7 +30,7 @@ from lookhop.config import Config
 from lookhop.model import GazeModel
 from lookhop.platform import (focus_screen, get_cursor, last_input_tick, list_screens,
                               mouse_button_down, resolve_roles, screen_at, set_cursor)
-from lookhop.tracker import Camera, FaceFeatures
+from lookhop.tracker import Camera, FaceFeatures, camera_index
 
 log = logging.getLogger(__name__)
 
@@ -225,7 +225,7 @@ class Engine:
                 if self._hold.is_set():  # calibration asked for the camera meanwhile
                     self._camera_free.set()
                     continue
-                cam = Camera(self.cfg.camera_index, self.cfg.camera_width,
+                cam = Camera(camera_index(self.cfg), self.cfg.camera_width,
                              self.cfg.camera_height, fps=30)
                 if not cam.open():
                     cam = None

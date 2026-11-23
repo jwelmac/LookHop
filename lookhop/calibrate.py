@@ -17,7 +17,7 @@ import numpy as np
 from lookhop.config import APP_NAME, Config
 from lookhop.model import LAPTOP, MONITOR, GazeModel, cross_validate, make_meta
 from lookhop.platform import list_screens, message_box, resolve_roles, ui_font
-from lookhop.tracker import Camera, FaceFeatures
+from lookhop.tracker import Camera, FaceFeatures, camera_index
 
 log = logging.getLogger(__name__)
 
@@ -79,7 +79,7 @@ class _Sampler(threading.Thread):
 
     def run(self) -> None:
         """Camera loop: read frames, extract face features, store labelled samples."""
-        cam = Camera(self.cfg.camera_index, self.cfg.camera_width, self.cfg.camera_height)
+        cam = Camera(camera_index(self.cfg), self.cfg.camera_width, self.cfg.camera_height)
         try:
             features = FaceFeatures()
         except Exception as e:
@@ -383,6 +383,9 @@ class _Calibrator:
 
 def run_calibration(cfg: Config) -> bool:
     """Returns True when a new calibration profile was saved."""
+    from lookhop.camera_picker import choose_camera
+    if not choose_camera(cfg):  # several cameras and the user cancelled the picker
+        return False
     try:
         cal = _Calibrator(cfg)
     except Exception as e:

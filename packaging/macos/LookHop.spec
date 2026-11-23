@@ -23,7 +23,7 @@ a = Analysis(
     binaries=binaries,
     datas=datas,
     hiddenimports=["pystray._darwin", "PIL._tkinter_finder", "AppKit", "Foundation", "Quartz",
-                   "ApplicationServices", "AVFoundation", "UserNotifications",
+                   "ApplicationServices", "AVFoundation", "UserNotifications", "CoreMedia", "dispatch",
                    "lookhop.platform.macos"],
     # (matplotlib must stay: mediapipe imports it at load time)
     excludes=["IPython", "pytest", "tensorflow", "jax", "torch"],

@@ -19,7 +19,8 @@ from pathlib import Path
 import cv2
 import numpy as np
 
-from lookhop.config import MODELS_DIR, RESOURCE_DIR
+from lookhop.config import MODELS_DIR, RESOURCE_DIR, Config
+from lookhop.platform import list_cameras, resolve_camera_index
 
 os.environ.setdefault("GLOG_minloglevel", "2")  # silence MediaPipe's C++ info logs
 
@@ -66,8 +67,19 @@ def ensure_model() -> Path:
     return MODEL_PATH
 
 
+def camera_index(cfg: Config) -> int:
+    """Camera index to open: by name / built-in where the OS can list cameras."""
+    cameras = list_cameras()
+    idx = resolve_camera_index(cfg.camera_name, cfg.camera_index, cameras)
+    if cameras:
+        log.info("Cameras: %s -> using %d (%s)",
+                 [f"{i}: {c.name}" for i, c in enumerate(cameras)], idx,
+                 cameras[idx].name if idx < len(cameras) else "?")
+    return idx
+
+
 class Camera:
-    """Webcam capture through OpenCV."""
+    """Webcam capture: AVFoundation on macOS, OpenCV elsewhere."""
     def __init__(self, index: int, width: int, height: int, fps: float | None = None):
         """Remember the camera index, requested size and frame rate."""
         self.index, self.width, self.height, self.fps = index, width, height, fps
@@ -75,6 +87,13 @@ class Camera:
 
     def open(self) -> bool:
         """Open the camera; True if frames can be read."""
+        if sys.platform == "darwin":  # exact device via AVFoundation (OpenCV's numbering is unreliable)
+            from lookhop.platform.macos.avcamera import AVCamera
+            av_cam = AVCamera(self.index, self.width, self.height)
+            if av_cam.open():
+                self.cap = av_cam
+                return True
+            return False
         for backend in CAMERA_BACKENDS:
             cap = cv2.VideoCapture(self.index, backend)
             if not cap.isOpened():
@@ -97,13 +116,18 @@ class Camera:
         """The latest frame as a BGR array, or None if unavailable."""
         if self.cap is None:
             return None
+        if not isinstance(self.cap, cv2.VideoCapture):  # AVCamera: returns the frame or None
+            return self.cap.read()
         ok, frame = self.cap.read()
         return frame if ok else None
 
     def close(self) -> None:
         """Release the camera."""
         if self.cap is not None:
-            self.cap.release()
+            if isinstance(self.cap, cv2.VideoCapture):
+                self.cap.release()
+            else:
+                self.cap.close()
             self.cap = None
 
 

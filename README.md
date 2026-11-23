@@ -160,7 +160,8 @@ powershell -ExecutionPolicy Bypass -File packaging\windows\build.ps1
 | `no_face_to_monitor_ms` | 500 | Face lost this long means monitor |
 | `move_start_gap_ms` | 150 | Mouse mode: mouse must be still this long before a move counts as reaching for it |
 | `iris_weight` / `iris_weight_glasses` | 0.5 / 0.2 | Iris vote relative to head pose |
-| `camera_index` | 0 | Which webcam to use |
+| `camera_index` | 0 | Which webcam to use (where cameras can't be listed by name) |
+| `camera_name` | `""` | macOS: webcam by name; empty = the Mac's built-in camera, so a nearby iPhone isn't picked by accident (Camera dropdown) |
 | `calibration_rounds` | 2 | Rounds of 10 dots |
 
 </details>

@@ -11,6 +11,7 @@ from pathlib import Path
 from lookhop.config import APP_NAME, DATA_DIR
 from lookhop.platform._common import open_file
 from lookhop.platform.macos import permissions
+from lookhop.platform.macos.camera import list_cameras
 from lookhop.platform.macos.autostart import autostart_enabled, set_autostart
 from lookhop.platform.macos.display import (get_cursor, last_input_tick, list_screens,
                                             make_dpi_aware, message_box, mouse_button_down,
@@ -40,6 +41,7 @@ def check_permissions(need_accessibility: bool = True) -> bool:
 
 
 __all__ = ["NAME", "SUPPORTED", "acquire_single_instance", "autostart_enabled", "check_permissions",
-           "focus_screen", "get_cursor", "GlobalHotkey", "last_input_tick", "list_screens",
+           "focus_screen", "get_cursor", "GlobalHotkey", "last_input_tick", "list_cameras",
+           "list_screens",
            "make_dpi_aware", "message_box", "mouse_button_down", "open_file", "parse_hotkey",
            "set_autostart", "set_cursor"]

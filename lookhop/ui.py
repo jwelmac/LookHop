@@ -20,7 +20,7 @@ from PIL import Image, ImageTk
 from lookhop.config import APP_NAME, TUNING_KEYS, Config
 from lookhop.engine import LAPTOP, MONITOR, Engine
 from lookhop.platform import (autostart_enabled, get_cursor, list_screens, resolve_roles,
-                              set_autostart, ui_font)
+                              set_autostart, ui_font, list_cameras)
 
 log = logging.getLogger(__name__)
 
@@ -309,10 +309,20 @@ class ControlPanel:
         r += 1
 
         ttk.Label(f, text="Camera").grid(row=r, column=0, sticky="w", pady=3)
-        self.cam_var = tk.IntVar(value=self.cfg.camera_index)
-        sp = ttk.Spinbox(f, from_=0, to=5, width=5, textvariable=self.cam_var, state="readonly",
-                         command=lambda: self._set("camera_index", int(self.cam_var.get())))
-        sp.grid(row=r, column=1, sticky="w", pady=3)
+        cameras = list_cameras()
+        if cameras:  # pick by name (macOS: keeps a nearby iPhone from being used by accident)
+            auto = "Auto (built-in)"
+            self.cam_name_var = tk.StringVar(value=self.cfg.camera_name or auto)
+            cb = ttk.Combobox(f, values=[auto] + [c.name for c in cameras],
+                              textvariable=self.cam_name_var, state="readonly", width=24)
+            cb.grid(row=r, column=1, columnspan=2, sticky="w", pady=3)
+            cb.bind("<<ComboboxSelected>>", lambda _e: self._set(
+                "camera_name", "" if self.cam_name_var.get() == auto else self.cam_name_var.get()))
+        else:
+            self.cam_var = tk.IntVar(value=self.cfg.camera_index)
+            sp = ttk.Spinbox(f, from_=0, to=5, width=5, textvariable=self.cam_var, state="readonly",
+                             command=lambda: self._set("camera_index", int(self.cam_var.get())))
+            sp.grid(row=r, column=1, sticky="w", pady=3)
         r += 1
 
         ttk.Label(f, text="Pause hotkey").grid(row=r, column=0, sticky="w", pady=3)
@@ -382,7 +392,7 @@ class ControlPanel:
             self._vars["laptop_enter_prob"][1]()
         if key.startswith("iris_weight"):
             self.engine.apply_iris_weight()
-        elif key == "camera_index":
+        elif key in ("camera_index", "camera_name"):
             self.engine.restart_camera()
         log.info("Setting %s = %r", key, value)
         if self._save_job is not None:

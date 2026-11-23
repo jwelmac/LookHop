@@ -73,3 +73,29 @@ def ui_font(size: int, bold: bool = False) -> tuple:
         return ("Segoe UI Semibold" if bold else "Segoe UI", size)
     family = ".AppleSystemUIFont" if sys.platform == "darwin" else "TkDefaultFont"
     return (family, size, "bold") if bold else (family, size)
+
+
+@dataclass(frozen=True)
+class CameraInfo:
+    """A camera reported by the OS: its name and whether it is the computer's own."""
+    name: str
+    builtin: bool  # the computer's own camera (not a phone / USB webcam)
+
+
+def resolve_camera_index(name: str, index: int, cameras: list[CameraInfo]) -> int:
+    """Which camera index to open. `name` wins (exact, then substring), then the
+    built-in camera; with no camera list (other OSes) the configured index is used."""
+    if not cameras:
+        return index
+    key = name.strip().lower()
+    if key:
+        for i, c in enumerate(cameras):
+            if c.name.lower() == key:
+                return i
+        for i, c in enumerate(cameras):
+            if key in c.name.lower():
+                return i
+    for i, c in enumerate(cameras):
+        if c.builtin:
+            return i
+    return index if 0 <= index < len(cameras) else 0

@@ -104,6 +104,9 @@ class Config:
     typing_guard_ms: int = 600
 
     camera_index: int = 0
+    # Camera by name; set by the picker shown before calibration when there are several cameras
+    # ("" = not chosen yet: the built-in one is used). Wins over camera_index where cameras can be listed.
+    camera_name: str = ""
     camera_width: int = 640
     camera_height: int = 480
     fps: float = 15.0         # analysis rate while a face is visible

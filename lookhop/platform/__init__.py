@@ -22,6 +22,7 @@ Backend contract
   acquire_single_instance(name)   handle to keep, or None when already running
   message_box(text, title, error=False)
   open_file(path)
+  list_cameras() -> [CameraInfo]  optional: cameras in OpenCV index order (macOS); default []
   check_permissions(need_accessibility=True) -> bool
                                   optional: ask for OS privacy permissions (macOS); default True
 """
@@ -29,7 +30,8 @@ from __future__ import annotations
 
 import sys
 
-from lookhop.platform.base import Screen, resolve_roles, screen_at, ui_font
+from lookhop.platform.base import (CameraInfo, Screen, resolve_camera_index, resolve_roles,
+                                   screen_at, ui_font)
 
 if sys.platform == "win32":
     from lookhop.platform.windows import *  # noqa: F401,F403
@@ -46,5 +48,11 @@ if "check_permissions" not in globals():  # only macOS needs one
         """Default: nothing to ask for (only macOS has privacy permissions)."""
         return True
 
-__all__ = ["Screen", "resolve_roles", "screen_at", "ui_font", "check_permissions",
-           *(n for n in _backend_all if n != "check_permissions")]
+if "list_cameras" not in globals():  # only macOS can tell cameras apart by name so far
+    def list_cameras() -> list[CameraInfo]:
+        """Default: no camera list, so the configured index is used."""
+        return []
+
+__all__ = ["Screen", "CameraInfo", "resolve_roles", "resolve_camera_index", "screen_at", "ui_font",
+           "check_permissions", "list_cameras",
+           *(n for n in _backend_all if n not in ("check_permissions", "list_cameras"))]
