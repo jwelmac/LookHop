@@ -126,6 +126,10 @@ class TrayApp:
         """Show a desktop notification if enabled."""
         if not self.cfg.show_notifications:
             return
+        if sys.platform == "darwin":  # LookHop's own notifications, not Script Editor's
+            from lookhop.platform.macos.notify import send
+            if send(message, APP_NAME):
+                return
         try:
             self.icon.notify(message, APP_NAME)
         except Exception:

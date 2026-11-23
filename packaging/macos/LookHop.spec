@@ -23,7 +23,8 @@ a = Analysis(
     binaries=binaries,
     datas=datas,
     hiddenimports=["pystray._darwin", "PIL._tkinter_finder", "AppKit", "Foundation", "Quartz",
-                   "ApplicationServices", "AVFoundation", "lookhop.platform.macos"],
+                   "ApplicationServices", "AVFoundation", "UserNotifications",
+                   "lookhop.platform.macos"],
     # (matplotlib must stay: mediapipe imports it at load time)
     excludes=["IPython", "pytest", "tensorflow", "jax", "torch"],
     noarchive=False,
@@ -51,7 +52,6 @@ app = BUNDLE(
         "NSCameraUsageDescription":
             "LookHop uses the camera to see which screen you are looking at. "
             "Frames are processed on this Mac and never saved or sent anywhere.",
-        "NSAppleEventsUsageDescription": "LookHop shows notifications.",
         "NSHumanReadableCopyright": "MIT License",
     },
 )

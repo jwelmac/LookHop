@@ -59,6 +59,7 @@ LookHop uses the webcam you already have to see **which screen you're facing**, 
 |---|---|---|
 | **Camera** | see where you look (frames never leave your Mac) | System Settings → Privacy & Security → Camera |
 | **Accessibility** | bring the other screen's app to the front, and the pause hotkey (**Ctrl + Option + G**) | System Settings → Privacy & Security → Accessibility |
+| **Notifications** (optional) | short status messages, e.g. when you pause | System Settings → Notifications → LookHop |
 
 > The app is ad-hoc signed, so macOS may ask you to grant the permissions again after you install an update (remove the old *LookHop* entry and add it again if the switch looks on but nothing works). Running from source? The permissions belong to the terminal you start it from.
 >
