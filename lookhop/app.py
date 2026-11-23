@@ -110,6 +110,7 @@ def main(argv=None) -> int:
     cfg = load_config()
 
     if args.command == "calibrate":
+        plat.check_permissions(need_accessibility=False)
         from lookhop.calibrate import run_calibration
         return 0 if run_calibration(cfg) else 1
 
@@ -117,6 +118,8 @@ def main(argv=None) -> int:
     if mutex is None:
         plat.message_box(f"{APP_NAME} is already running - look for it in the tray.", APP_NAME)
         return 1
+
+    plat.check_permissions()  # macOS: Camera + Accessibility prompts (no-op elsewhere)
 
     if not cfg.profile_path.exists():
         log.info("No calibration for glasses=%s yet - calibrating first", cfg.glasses)

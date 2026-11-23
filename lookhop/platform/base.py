@@ -1,6 +1,7 @@
 """OS-independent display helpers shared by every platform backend."""
 from __future__ import annotations
 
+import sys
 from dataclasses import dataclass
 
 
@@ -54,3 +55,11 @@ def resolve_roles(screens: list[Screen], laptop_display: str) -> tuple[Screen | 
 
 def screen_at(screens: list[Screen], x: int, y: int) -> Screen | None:
     return next((s for s in screens if s.contains(x, y)), None)
+
+
+def ui_font(size: int, bold: bool = False) -> tuple:
+    """Tk font tuple using the system UI font of this OS."""
+    if sys.platform == "win32":
+        return ("Segoe UI Semibold" if bold else "Segoe UI", size)
+    family = ".AppleSystemUIFont" if sys.platform == "darwin" else "TkDefaultFont"
+    return (family, size, "bold") if bold else (family, size)

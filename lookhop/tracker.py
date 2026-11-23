@@ -10,6 +10,7 @@ from __future__ import annotations
 import logging
 import os
 import shutil
+import ssl
 import sys
 import time
 import urllib.request
@@ -49,11 +50,16 @@ def ensure_model() -> Path:
     for path in (BUNDLED_MODEL, MODEL_PATH):
         if path.exists() and path.stat().st_size > 1_000_000:
             return path
-    MODELS_DIR.mkdir(parents=True, exist_ok=True)
+    MODEL_PATH.parent.mkdir(parents=True, exist_ok=True)
     tmp = MODEL_PATH.with_suffix(".part")
     log.info("Downloading face model to %s", MODEL_PATH)
     req = urllib.request.Request(MODEL_URL, headers={"User-Agent": "python-urllib"})
-    with urllib.request.urlopen(req, timeout=60) as resp, open(tmp, "wb") as f:
+    try:  # python.org builds on macOS ship without root certificates; certifi comes with mediapipe
+        import certifi
+        ctx = ssl.create_default_context(cafile=certifi.where())
+    except ImportError:
+        ctx = None
+    with urllib.request.urlopen(req, timeout=60, context=ctx) as resp, open(tmp, "wb") as f:
         shutil.copyfileobj(resp, f)
     tmp.replace(MODEL_PATH)
     return MODEL_PATH

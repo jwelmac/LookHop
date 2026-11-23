@@ -54,6 +54,12 @@ class TrayApp:
             log.error("Hotkey %s: %s", cfg.hotkey, msg)
 
         self.panel = ControlPanel(cfg, engine, self)
+        if sys.platform == "darwin":
+            self.panel.prepare_main_thread()  # Tk first: it owns the NSApplication subclass
+            # Menu-bar app: no Dock icon (the packaged .app also sets LSUIElement).
+            from AppKit import NSApplication, NSApplicationActivationPolicyAccessory
+            NSApplication.sharedApplication().setActivationPolicy_(
+                NSApplicationActivationPolicyAccessory)
         self.icon = pystray.Icon(APP_NAME, self._icon_image(), APP_NAME, menu=self._menu())
         engine.on_change = self.refresh
 
@@ -95,6 +101,12 @@ class TrayApp:
         if key == self._last_key:
             return
         self._last_key = key
+        if sys.platform == "darwin":  # AppKit objects may only be touched on the main thread
+            self.panel.call_soon(self._apply_refresh)
+        else:
+            self._apply_refresh()
+
+    def _apply_refresh(self) -> None:
         try:
             self.icon.icon = self._icon_image()
             self.icon.title = f"{APP_NAME} - {self.status_text()}"
@@ -162,7 +174,9 @@ class TrayApp:
             hk.start()
             hk.ready.wait(2)
             if not hk.ok:
-                return False, "Already used by another app"
+                return False, ("Already used by another app, or LookHop lacks the Accessibility "
+                               "permission" if sys.platform == "darwin" else
+                               "Already used by another app")
             self.hotkey, self.hotkey_label = hk, spec.title()
             return True, ""
 
@@ -201,7 +215,7 @@ class TrayApp:
             self.cfg.save()  # the calibration process reads config.json
             if not self.engine.release_camera():
                 log.warning("Camera did not close in time; calibration may fail to open it")
-            # Separate process: Tk wants its own main thread, and the tray owns ours.
+            # Separate process: Tk wants its own main thread (the tray or the panel owns ours).
             rc = subprocess.run(self_command("calibrate"), cwd=str(SOURCE_ROOT)).returncode
             self.engine.reload_model()
             self.notify("Calibration saved." if rc == 0 else "Calibration cancelled.")
@@ -213,9 +227,13 @@ class TrayApp:
             self.refresh()
 
     def _quit(self):
-        self.panel.shutdown()
         if self.hotkey is not None:
             self.hotkey.stop()
+        if sys.platform == "darwin":
+            self.icon.visible = False  # remove the menu-bar item; Tk's loop is what ends
+            self.panel.shutdown()
+            return
+        self.panel.shutdown()
         self.icon.stop()
 
     def run(self) -> None:
@@ -223,4 +241,10 @@ class TrayApp:
             icon.visible = True
             self.refresh()
             self.notify("Running. Click the tray icon for the control panel.")
+        if sys.platform == "darwin":
+            # Cocoa wants the main thread for both the menu-bar item and Tk, so Tk runs
+            # the event loop here and pystray rides on it (run_detached).
+            self.icon.run_detached(setup=lambda icon: self.panel.call_soon(lambda: setup(icon)))
+            self.panel.run_mainloop()
+            return
         self.icon.run(setup=setup)

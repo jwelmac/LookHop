@@ -1,7 +1,9 @@
-"""Render the LookHop eye logo to assets/lookhop.ico and assets/logo.png.
+"""Render the LookHop eye logo to assets/lookhop.ico, assets/logo.png and
+assets/lookhop.icns (macOS app icon; generated, not committed).
 
     python packaging/make_icons.py
 """
+import sys
 from pathlib import Path
 
 from PIL import Image, ImageDraw
@@ -33,10 +35,15 @@ def render(size: int = 1024) -> Image.Image:
 def main() -> None:
     ASSETS.mkdir(exist_ok=True)
     big = render()
+    if "--icns-only" in sys.argv:  # macOS build: leave the committed png/ico alone
+        big.save(ASSETS / "lookhop.icns", format="ICNS")
+        print("wrote", ASSETS / "lookhop.icns")
+        return
     big.resize((256, 256), Image.LANCZOS).save(ASSETS / "logo.png")
     big.resize((256, 256), Image.LANCZOS).save(
         ASSETS / "lookhop.ico", sizes=[(16, 16), (24, 24), (32, 32), (48, 48), (64, 64), (128, 128), (256, 256)])
-    print("wrote", ASSETS / "logo.png", "and", ASSETS / "lookhop.ico")
+    big.save(ASSETS / "lookhop.icns", format="ICNS")
+    print("wrote", ASSETS / "logo.png", ",", ASSETS / "lookhop.ico", "and", ASSETS / "lookhop.icns")
 
 
 if __name__ == "__main__":

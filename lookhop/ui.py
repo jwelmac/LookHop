@@ -1,12 +1,15 @@
 """Control panel: live view of what the tracker sees + every setting, applied live.
 
-Tk runs on its own thread (the tray owns the main thread). All Tk calls stay on
-that thread; other threads talk to it through a queue.
+Tk runs on its own thread (on Windows the tray owns the main thread). On macOS
+Cocoa needs the main thread for both the tray icon and Tk, so there Tk takes the
+main thread (run_mainloop) and the tray rides on its event loop. Either way all
+Tk calls stay on the Tk thread; other threads talk to it through a queue.
 """
 from __future__ import annotations
 
 import logging
 import queue
+import sys
 import threading
 import time
 import tkinter as tk
@@ -17,7 +20,7 @@ from PIL import Image, ImageTk
 from lookhop.config import APP_NAME, TUNING_KEYS, Config
 from lookhop.engine import LAPTOP, MONITOR, Engine
 from lookhop.platform import (autostart_enabled, get_cursor, list_screens, resolve_roles,
-                              set_autostart)
+                              set_autostart, ui_font)
 
 log = logging.getLogger(__name__)
 
@@ -27,8 +30,8 @@ MAP_BG = "#16181c"
 SCREEN_OFF = "#2a2d33"
 MUTED = "#6b6f7a"
 WARN = "#c77d00"
-FONT = ("Segoe UI", 9)
-FONT_B = ("Segoe UI Semibold", 9)
+FONT = ui_font(9)
+FONT_B = ui_font(9, True)
 
 
 class ControlPanel:
@@ -39,10 +42,17 @@ class ControlPanel:
         self._q: queue.Queue = queue.Queue()
         self._thread: threading.Thread | None = None
         self._visible = False
+        self.on_main_thread = sys.platform == "darwin"
 
     # ---------- thread-safe API ----------
+    def call_soon(self, fn) -> None:
+        """Run fn() on the Tk thread (safe from any thread)."""
+        self._q.put(fn)
+
     def show(self) -> None:
-        if self._thread is None or not self._thread.is_alive():
+        if self.on_main_thread:
+            self._q.put("show")
+        elif self._thread is None or not self._thread.is_alive():
             self._thread = threading.Thread(target=self._run, name="ui", daemon=True)
             self._thread.start()
         else:
@@ -54,11 +64,24 @@ class ControlPanel:
             self._thread.join(timeout=2)
 
     # ---------- Tk thread ----------
-    def _run(self) -> None:
+    def prepare_main_thread(self) -> None:
+        """macOS: create the (hidden) Tk root on the main thread. Must happen before
+        anything else touches NSApplication - Tk installs its own NSApplication
+        subclass and crashes if a plain one already exists."""
+        self.root = tk.Tk()
+        self.root.withdraw()
+        self._build()
+
+    def run_mainloop(self) -> None:
+        """Run Tk on the calling (main) thread until shutdown(); starts hidden."""
+        self._run(prebuilt=True)
+
+    def _run(self, prebuilt: bool = False) -> None:
         try:
-            self.root = tk.Tk()
-            self._build()
-            self._show()
+            if not prebuilt:
+                self.root = tk.Tk()
+                self._build()
+                self._show()
             self.root.after(TICK_MS, self._tick)
             self.root.mainloop()
         except Exception:
@@ -74,6 +97,12 @@ class ControlPanel:
         self._visible = True
         self.root.deiconify()
         self.root.lift()
+        if sys.platform == "darwin":  # menu-bar apps aren't frontmost by default
+            try:
+                from AppKit import NSApplication
+                NSApplication.sharedApplication().activateIgnoringOtherApps_(True)
+            except Exception:  # noqa: BLE001
+                pass
         self.root.focus_force()
         self.engine.ui_preview = self.show_cam.get()
 
@@ -87,7 +116,12 @@ class ControlPanel:
         try:
             while True:
                 msg = self._q.get_nowait()
-                if msg == "show":
+                if callable(msg):
+                    try:
+                        msg()
+                    except Exception:
+                        log.exception("call_soon callback failed")
+                elif msg == "show":
                     self._show()
                 elif msg == "quit":
                     self._flush_save()
@@ -119,7 +153,7 @@ class ControlPanel:
         except tk.TclError:
             pass
         style.configure("Muted.TLabel", foreground=MUTED)
-        style.configure("Head.TLabel", font=("Segoe UI Semibold", 12))
+        style.configure("Head.TLabel", font=ui_font(12, True))
         style.configure("Section.TLabel", font=FONT_B)
 
         self._vars: dict[str, tuple[tk.Variable, callable]] = {}
@@ -282,7 +316,7 @@ class ControlPanel:
         self._check(f, r, "show_notifications", "Show notifications")
         r += 1
         self.autostart_var = tk.BooleanVar(value=autostart_enabled())
-        ttk.Checkbutton(f, text="Start with Windows", variable=self.autostart_var,
+        ttk.Checkbutton(f, text="Start at login" if sys.platform == "darwin" else "Start with Windows", variable=self.autostart_var,
                         command=self._toggle_autostart).grid(row=r, column=0, columnspan=3, sticky="w", pady=3)
         r += 1
         row = ttk.Frame(f)
@@ -453,7 +487,7 @@ class ControlPanel:
                                width=3 if flash and flash[1] == role else 2)
             label = {LAPTOP: "Laptop", MONITOR: "Monitor"}.get(role, s.name)
             c.create_text((x0 + x1) / 2, (y0 + y1) / 2, text=label,
-                          fill="#0b0c0e" if lit else "#9aa0aa", font=("Segoe UI Semibold", 11))
+                          fill="#0b0c0e" if lit else "#9aa0aa", font=ui_font(11, True))
         pos = get_cursor()
         if pos:
             x, y = to_canvas(*pos)
@@ -476,5 +510,5 @@ class ControlPanel:
                           (self.cfg.laptop_exit_prob, COLORS[MONITOR])):
             x = x1 - (x1 - x0) * prob
             c.create_line(x, y0 - 3, x, y1 + 3, fill=col, width=2)
-        c.create_text(x0, y1 + 5, text="laptop", anchor="nw", fill=MUTED, font=("Segoe UI", 7))
-        c.create_text(x1, y1 + 5, text="monitor", anchor="ne", fill=MUTED, font=("Segoe UI", 7))
+        c.create_text(x0, y1 + 5, text="laptop", anchor="nw", fill=MUTED, font=ui_font(7))
+        c.create_text(x1, y1 + 5, text="monitor", anchor="ne", fill=MUTED, font=ui_font(7))

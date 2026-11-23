@@ -15,7 +15,7 @@ import numpy as np
 
 from lookhop.config import APP_NAME, Config
 from lookhop.model import LAPTOP, MONITOR, GazeModel, cross_validate, make_meta
-from lookhop.platform import list_screens, message_box, resolve_roles
+from lookhop.platform import list_screens, message_box, resolve_roles, ui_font
 from lookhop.tracker import Camera, FaceFeatures
 
 log = logging.getLogger(__name__)
@@ -33,7 +33,7 @@ DIM = "#6b6f7a"
 ACCENT = "#4da3ff"
 WARN = "#ffb547"
 OK = "#4cd17a"
-FONT = "Segoe UI"
+FONT = ui_font(0)[0]
 
 
 def build_sequence(rounds: int) -> list[tuple[str, tuple[float, float]]]:

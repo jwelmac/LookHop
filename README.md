@@ -12,7 +12,7 @@ No dragging the mouse across two screens, no extra click to select the window.
 [![Download for Windows](https://img.shields.io/badge/Download-Windows-0078D6?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/shubhendam/LookHop/releases/latest)
 
 ![Platform](https://img.shields.io/badge/platform-Windows-0078D6)
-![macOS](https://img.shields.io/badge/macOS-help%20wanted-lightgrey)
+![macOS](https://img.shields.io/badge/platform-macOS-000000?logo=apple&logoColor=white)
 ![Linux](https://img.shields.io/badge/Linux-help%20wanted-lightgrey)
 ![Python](https://img.shields.io/badge/python-3.10%2B-3776AB?logo=python&logoColor=white)
 ![License: MIT](https://img.shields.io/badge/license-MIT-green)
@@ -47,6 +47,22 @@ LookHop uses the webcam you already have to see **which screen you're facing**, 
 | 🎛️ **Control panel** | Live view of what it sees, plus every setting, applied instantly. |
 | 🪶 **Light** | ~15 frames/s at ~15 ms each on a laptop CPU. The camera turns off while paused. |
 | 🔒 **Private** | Everything runs on your machine. No account, no network, no telemetry. |
+
+## Quick start (macOS)
+
+1. Download **`LookHop-x.y.z-macos-arm64.zip`** from [**Releases**](https://github.com/shubhendam/LookHop/releases/latest), unzip it and drag **LookHop.app** to *Applications*.
+2. The build isn't notarized yet, so macOS blocks the first launch: **right-click LookHop.app → Open → Open** (or *System Settings → Privacy & Security → Open Anyway*).
+3. Allow **Camera** when asked, then grant **Accessibility** (see below). Restart LookHop after granting Accessibility.
+4. **Calibrate** (about 45 s), as described in the Windows steps below. LookHop lives in the **menu bar** (the eye icon); click it for the menu or *Open control panel*.
+
+| Permission | Why | Where |
+|---|---|---|
+| **Camera** | see where you look (frames never leave your Mac) | System Settings → Privacy & Security → Camera |
+| **Accessibility** | bring the other screen's app to the front, and the pause hotkey (**Ctrl + Option + G**) | System Settings → Privacy & Security → Accessibility |
+
+> The app is ad-hoc signed, so macOS may ask you to grant the permissions again after you install an update (remove the old *LookHop* entry and add it again if the switch looks on but nothing works). Running from source? The permissions belong to the terminal you start it from.
+>
+> macOS puts your **menu-bar display** as "primary". If the wrong screen is treated as the laptop, set *Laptop display* (System tab) to `primary`: the default `left` goes by physical arrangement in *Displays → Arrange*.
 
 ## Quick start (Windows)
 
@@ -90,11 +106,11 @@ flowchart LR
 | OS | Status |
 |---|---|
 | **Windows 10 / 11** | ✅ Supported |
-| **macOS** | 🛠️ Help wanted: the camera, calibration and UI already work; only [`lookhop/platform/macos`](lookhop/platform/macos/__init__.py) needs filling in |
+| **macOS 11+** | ✅ Supported (Apple silicon tested; see [`lookhop/platform/macos`](lookhop/platform/macos/__init__.py)) |
 | **Linux (X11)** | 🛠️ Help wanted: see [`lookhop/platform/linux`](lookhop/platform/linux/__init__.py) |
 | **Linux (Wayland)** | ⚠️ Compositors block moving the pointer and switching windows from apps; needs per-compositor work |
 
-Each OS stub lists exactly which functions to implement and which system APIs to use. See [CONTRIBUTING.md](CONTRIBUTING.md).
+The Linux stub lists exactly which functions to implement and which system APIs to use. See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Run from source
 
@@ -106,6 +122,18 @@ python -m venv .venv
 .\.venv\Scripts\python.exe -m lookhop            # or double-click run.bat
 ```
 
+On macOS (python.org Python recommended; with Homebrew install `python-tk` too):
+
+```bash
+git clone https://github.com/shubhendam/LookHop.git
+cd LookHop
+python3 -m venv .venv
+.venv/bin/python -m pip install -r requirements.txt
+.venv/bin/python -m lookhop
+```
+
+Build the macOS app yourself (PyInstaller, then a built-in selftest, then a zip in `dist/`): `./packaging/macos/build.sh`
+
 Build the Windows release yourself (PyInstaller, then a built-in selftest, then a zip in `dist/`):
 
 ```powershell
@@ -113,7 +141,7 @@ powershell -ExecutionPolicy Bypass -File packaging\windows\build.ps1
 ```
 
 <details>
-<summary><b>All settings</b> (control panel, or <code>%APPDATA%\LookHop\config.json</code>)</summary>
+<summary><b>All settings</b> (control panel, or <code>%APPDATA%\LookHop\config.json</code>; on macOS <code>~/Library/Application Support/LookHop/config.json</code>)</summary>
 
 | Key | Default | Meaning |
 |---|---|---|
@@ -144,13 +172,15 @@ powershell -ExecutionPolicy Bypass -File packaging\windows\build.ps1
 - **Tray icon is amber / "Camera unavailable":** another app (Teams, Zoom) is using the webcam. LookHop retries every few seconds, or press Ctrl+Alt+G to pause it during calls.
 - **Accuracy dropped:** recalibrate after moving the monitor, changing seats or changing lighting.
 - **Wrong screen treated as the laptop:** System tab → *Laptop display*.
-- **Logs:** `%APPDATA%\LookHop\lookhop.log` (System tab → *Open log*).
+- **Logs:** `%APPDATA%\LookHop\lookhop.log`, or `~/Library/Application Support/LookHop/lookhop.log` on macOS (System tab → *Open log*).
+- **macOS: cursor jumps but the app doesn't come to the front / the hotkey does nothing:** LookHop is missing the Accessibility permission (see Quick start).
+- **macOS: "Camera unavailable":** check *Privacy & Security → Camera*, and that no other app is using the webcam.
 
 </details>
 
 ## Contributing
 
-Ports to **macOS** and **Linux** are the most wanted contributions. Bug reports, tuning ideas and setups other than laptop + monitor are welcome too.
+A **Linux** port is the most wanted contribution. Bug reports, tuning ideas and setups other than laptop + monitor are welcome too.
 Start with [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## License
