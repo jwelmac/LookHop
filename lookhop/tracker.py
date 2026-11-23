@@ -19,8 +19,8 @@ from pathlib import Path
 import cv2
 import numpy as np
 
-from lookhop.config import MODELS_DIR, RESOURCE_DIR, Config
-from lookhop.platform import list_cameras, resolve_camera_index
+from lookhop.cameras import camera_index  # noqa: F401 (re-exported for callers)
+from lookhop.config import MODELS_DIR, RESOURCE_DIR
 
 os.environ.setdefault("GLOG_minloglevel", "2")  # silence MediaPipe's C++ info logs
 
@@ -65,17 +65,6 @@ def ensure_model() -> Path:
         shutil.copyfileobj(resp, f)
     tmp.replace(MODEL_PATH)
     return MODEL_PATH
-
-
-def camera_index(cfg: Config) -> int:
-    """Camera index to open: by name / built-in where the OS can list cameras."""
-    cameras = list_cameras()
-    idx = resolve_camera_index(cfg.camera_name, cfg.camera_index, cameras)
-    if cameras:
-        log.info("Cameras: %s -> using %d (%s)",
-                 [f"{i}: {c.name}" for i, c in enumerate(cameras)], idx,
-                 cameras[idx].name if idx < len(cameras) else "?")
-    return idx
 
 
 class Camera:

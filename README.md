@@ -65,6 +65,8 @@ LookHop uses the webcam you already have to see **which screen you're facing**, 
 >
 > The Mac's **built-in display** is treated as the laptop and the other display as your monitor. If that's the wrong way round, change *Laptop display* (System tab).
 
+**More than one camera (macOS)?** With a webcam plugged in, or an iPhone acting as a camera, LookHop asks which camera to use before calibrating (with a live preview). Each camera is calibrated separately, because each sees you differently (change it any time under *System → Camera*). If the camera you calibrated with is unplugged, LookHop switches to the built-in camera and tells you; if that one hasn't been calibrated yet it asks you to calibrate it, and switches back to the first camera (with its saved calibration) once it's plugged in again.
+
 ## Quick start (Windows)
 
 1. Download **`LookHop-x.y.z-windows-x64.zip`** from [**Releases**](https://github.com/shubhendam/LookHop/releases/latest) and unzip it anywhere.

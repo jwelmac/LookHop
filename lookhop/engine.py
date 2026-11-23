@@ -26,6 +26,7 @@ import time
 
 import cv2
 
+from lookhop.cameras import active_camera_name, camera_key, requested_missing
 from lookhop.config import Config
 from lookhop.model import GazeModel
 from lookhop.platform import (focus_screen, get_cursor, last_input_tick, list_screens,
@@ -48,6 +49,10 @@ class Engine:
         """Create the engine and load the calibration model if there is one."""
         self.cfg = cfg
         self.on_change = lambda: None  # set by the tray
+        # Called (from the vision thread) when the camera in use changes: (name, calibrated, missing)
+        self.on_camera_change = lambda name, calibrated, missing: None
+        self.camera_label = ""      # name of the camera the loaded profile belongs to
+        self._model_camera_key = None
 
         self.model: GazeModel | None = None
         self.state = MONITOR
@@ -99,8 +104,10 @@ class Engine:
             t.join(timeout=3)
 
     def reload_model(self) -> None:
-        """(Re)load the calibration profile for the current glasses setting."""
-        path = self.cfg.profile_path
+        """(Re)load the calibration profile for the current glasses setting and camera."""
+        key = camera_key(self.cfg)
+        path = self.cfg.profile_path_for(key)
+        self.camera_label = active_camera_name(self.cfg)
         model = None
         if path.exists():
             try:
@@ -110,8 +117,26 @@ class Engine:
                 log.exception("Could not load %s", path)
         with self._lock:
             self.model = model
+            self._model_camera_key = key
             self._reset_gaze()
         self._set_status(self._idle_status())
+
+    def check_camera_change(self) -> None:
+        """If the camera in use changed (plugged / unplugged / re-chosen), switch profile.
+
+        Loads that camera's calibration (or none), restarts the capture and tells the tray
+        so the user can be told - and asked to calibrate when the camera has no profile yet.
+        """
+        if self._hold.is_set() or camera_key(self.cfg) == self._model_camera_key:
+            return
+        log.info("Camera changed: now %r", active_camera_name(self.cfg))
+        self.reload_model()
+        self._restart_cam.set()
+        try:
+            self.on_camera_change(self.camera_label, self.model is not None,
+                                  requested_missing(self.cfg))
+        except Exception:
+            log.exception("on_camera_change failed")
 
     def apply_iris_weight(self) -> None:
         """Push the configured iris weight into the loaded model."""
@@ -198,7 +223,11 @@ class Engine:
         next_retry = 0.0
         read_failures = 0
         last_t0 = 0.0
+        next_cam_check = 0.0
         while not self._stop.is_set():
+            if time.monotonic() >= next_cam_check:  # watch for cameras coming and going
+                next_cam_check = time.monotonic() + 3.0
+                self.check_camera_change()
             if self._restart_cam.is_set():
                 self._restart_cam.clear()
                 if cam is not None:

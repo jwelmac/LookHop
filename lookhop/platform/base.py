@@ -82,19 +82,28 @@ class CameraInfo:
     builtin: bool  # the computer's own camera (not a phone / USB webcam)
 
 
+def find_camera(name: str, cameras: list[CameraInfo]) -> int | None:
+    """Index of the camera called `name` (exact match first, then substring), or None."""
+    key = name.strip().lower()
+    if not key:
+        return None
+    for i, c in enumerate(cameras):
+        if c.name.lower() == key:
+            return i
+    for i, c in enumerate(cameras):
+        if key in c.name.lower():
+            return i
+    return None
+
+
 def resolve_camera_index(name: str, index: int, cameras: list[CameraInfo]) -> int:
-    """Which camera index to open. `name` wins (exact, then substring), then the
-    built-in camera; with no camera list (other OSes) the configured index is used."""
+    """Which camera index to open. `name` wins, then the built-in camera; with no camera
+    list (other OSes) the configured index is used."""
     if not cameras:
         return index
-    key = name.strip().lower()
-    if key:
-        for i, c in enumerate(cameras):
-            if c.name.lower() == key:
-                return i
-        for i, c in enumerate(cameras):
-            if key in c.name.lower():
-                return i
+    found = find_camera(name, cameras)
+    if found is not None:
+        return found
     for i, c in enumerate(cameras):
         if c.builtin:
             return i

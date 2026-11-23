@@ -136,9 +136,18 @@ class Config:
 
     @property
     def profile_path(self) -> Path:
-        """Calibration file for the current glasses setting."""
-        name = "calibration_glasses.json" if self.glasses else "calibration.json"
-        return DATA_DIR / name
+        """Calibration file for the current glasses setting and the camera in use."""
+        from lookhop.cameras import camera_key  # lazy: cameras imports this module
+        return self.profile_path_for(camera_key(self))
+
+    def profile_path_for(self, camera: str) -> Path:
+        """Calibration file for the glasses setting and the camera id `camera`.
+
+        Each camera has its own profile (it sees you differently). With no camera id
+        (cameras can't be listed on this OS) the original names are used.
+        """
+        parts = ["calibration"] + (["glasses"] if self.glasses else []) + ([camera] if camera else [])
+        return DATA_DIR / ("_".join(parts) + ".json")
 
     @property
     def effective_iris_weight(self) -> float:

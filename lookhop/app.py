@@ -14,6 +14,7 @@ from logging.handlers import RotatingFileHandler
 
 from lookhop import __version__
 from lookhop import platform as plat
+from lookhop.cameras import active_camera_name, requested_missing
 from lookhop.config import APP_NAME, DATA_DIR, LOG_PATH, load_config
 
 log = logging.getLogger(APP_NAME)
@@ -124,7 +125,13 @@ def main(argv=None) -> int:
     plat.check_permissions()  # macOS: Camera + Accessibility prompts (no-op elsewhere)
 
     if not cfg.profile_path.exists():
-        log.info("No calibration for glasses=%s yet - calibrating first", cfg.glasses)
+        missing = requested_missing(cfg)
+        if missing:  # e.g. the webcam it was calibrated with is unplugged
+            plat.message_box(f"Your camera '{missing}' isn't connected.\n\nLookHop will use "
+                             f"'{active_camera_name(cfg)}' instead, which hasn't been calibrated "
+                             "yet, so calibration starts now.", APP_NAME)
+        log.info("No calibration for glasses=%s camera=%r yet - calibrating first",
+                 cfg.glasses, active_camera_name(cfg))
         from lookhop.calibrate import run_calibration
         if not run_calibration(cfg):
             log.info("Calibration cancelled; exiting")

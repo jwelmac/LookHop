@@ -392,8 +392,10 @@ class ControlPanel:
             self._vars["laptop_enter_prob"][1]()
         if key.startswith("iris_weight"):
             self.engine.apply_iris_weight()
-        elif key in ("camera_index", "camera_name"):
+        elif key == "camera_index":
             self.engine.restart_camera()
+        elif key == "camera_name":  # each camera has its own calibration
+            self.ctl.set_camera(value)
         log.info("Setting %s = %r", key, value)
         if self._save_job is not None:
             self.root.after_cancel(self._save_job)

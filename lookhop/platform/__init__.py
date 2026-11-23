@@ -30,8 +30,8 @@ from __future__ import annotations
 
 import sys
 
-from lookhop.platform.base import (CameraInfo, Screen, resolve_camera_index, resolve_roles,
-                                   screen_at, ui_font)
+from lookhop.platform.base import (CameraInfo, Screen, find_camera, resolve_camera_index,
+                                   resolve_roles, screen_at, ui_font)
 
 if sys.platform == "win32":
     from lookhop.platform.windows import *  # noqa: F401,F403
@@ -53,6 +53,7 @@ if "list_cameras" not in globals():  # only macOS can tell cameras apart by name
         """Default: no camera list, so the configured index is used."""
         return []
 
-__all__ = ["Screen", "CameraInfo", "resolve_roles", "resolve_camera_index", "screen_at", "ui_font",
+__all__ = ["Screen", "CameraInfo", "resolve_roles", "find_camera", "resolve_camera_index",
+           "screen_at", "ui_font",
            "check_permissions", "list_cameras",
            *(n for n in _backend_all if n not in ("check_permissions", "list_cameras"))]

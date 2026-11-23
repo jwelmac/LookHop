@@ -10,6 +10,7 @@ import pystray
 from PIL import Image, ImageDraw
 from pystray import Menu, MenuItem as Item
 
+from lookhop.cameras import requested_missing
 from lookhop.config import (APP_NAME, CONFIG_PATH, LOG_PATH, SOURCE_ROOT, Config, load_config,
                             self_command)
 from lookhop.engine import LAPTOP, MONITOR, Engine
@@ -74,6 +75,7 @@ class TrayApp:
                 NSApplicationActivationPolicyAccessory)
         self.icon = pystray.Icon(APP_NAME, self._icon_image(), APP_NAME, menu=self._menu())
         engine.on_change = self.refresh
+        engine.on_camera_change = self.camera_changed
 
     # ---------- appearance ----------
     def _icon_key(self):
@@ -106,7 +108,7 @@ class TrayApp:
         if e.paused:
             return "Paused"
         return {
-            "no_model": "Not calibrated",
+            "no_model": f"Not calibrated ({e.camera_label})" if e.camera_label else "Not calibrated",
             "no_camera": "Camera unavailable (in use?)",
             "error": "Face tracker error - see log",
             "starting": "Starting…",
@@ -188,6 +190,28 @@ class TrayApp:
             self.recalibrate()
         else:
             self.notify("Glasses " + ("on" if on else "off") + " - using that calibration.")
+        self.refresh()
+
+    def camera_changed(self, name: str, calibrated: bool, missing: str) -> None:
+        """The camera in use changed: tell the user, and point to Recalibrate if it has no profile."""
+        lead = f"{missing} isn't connected. " if missing else ""
+        if calibrated:
+            self.notify(f"{lead}Using {name}.")
+        else:
+            self.notify(f"{lead}{name} hasn't been calibrated yet. "
+                        "Choose Recalibrate… in the menu to calibrate it.")
+        self.refresh()
+
+    def set_camera(self, name: str) -> None:
+        """Switch to the camera called `name` ('' = built-in): use its calibration, or calibrate."""
+        self.cfg.save()
+        self.engine.reload_model()
+        self.engine.restart_camera()
+        if self.engine.model is None:
+            self.notify(f"{self.engine.camera_label} hasn't been calibrated yet - starting calibration.")
+            self.recalibrate()
+        else:
+            self.notify(f"Using {self.engine.camera_label} with its saved calibration.")
         self.refresh()
 
     def _start_hotkey(self, spec: str) -> tuple[bool, str]:
@@ -281,6 +305,9 @@ class TrayApp:
             icon.visible = True
             self.refresh()
             self.notify("Running. Click the tray icon for the control panel.")
+            missing = requested_missing(self.cfg)
+            if missing:  # the chosen camera isn't plugged in: a stand-in is being used
+                self.camera_changed(self.engine.camera_label, self.engine.model is not None, missing)
         if sys.platform == "darwin":
             # Cocoa wants the main thread for both the menu-bar item and Tk, so Tk runs
             # the event loop here and pystray rides on it (run_detached).
