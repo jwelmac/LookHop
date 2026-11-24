@@ -151,8 +151,9 @@ class TrayApp:
             Item(lambda _i: self.status_text(), None, enabled=False),
             Menu.SEPARATOR,
             Item("Open control panel", self.open_panel, default=True),
-            Item(lambda _i: "Paused" + (f"   ({self.hotkey_label})" if self.hotkey_label else ""),
-                 self.toggle_pause, checked=lambda _i: self.engine.paused),
+            Item(lambda _i: ("Resume" if self.engine.paused else "Pause")
+                 + (f"   ({self.hotkey_label})" if self.hotkey_label else ""),
+                 self.toggle_pause),
             Item("Recalibrate…", self.recalibrate, enabled=lambda _i: not self._calibrating),
             Menu.SEPARATOR,
             Item("Quit", self._quit),
