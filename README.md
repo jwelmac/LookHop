@@ -76,7 +76,7 @@ LookHop uses the webcam you already have to see **which screen you're facing**, 
 | To… | Do this |
 |---|---|
 | Open the control panel | Left-click the tray icon |
-| Pause / resume (camera off) | **Ctrl + Alt + G**, or the tray menu |
+| Pause / resume (camera off) | **Ctrl + Alt + G** (macOS: **Ctrl + Option + G**), or the tray menu |
 | Recalibrate | Control panel → Behaviour → *Recalibrate…* |
 | Start automatically at login | Control panel → System → *Start with Windows* |
 | Quit | Right-click the tray icon → *Quit* |
@@ -170,7 +170,7 @@ powershell -ExecutionPolicy Bypass -File packaging\windows\build.ps1
 
 - **Jumps on a quick glance:** raise *Hold before laptop* (Tuning tab).
 - **Feels slow:** lower the hold times or raise *Analysis rate*; the live view shows the real fps and ms/frame.
-- **Tray icon is amber / "Camera unavailable":** another app (Teams, Zoom) is using the webcam. LookHop retries every few seconds, or press Ctrl+Alt+G to pause it during calls.
+- **Tray icon is amber / "Camera unavailable":** another app (Teams, Zoom) is using the webcam. LookHop retries every few seconds, or press Ctrl+Alt+G (Ctrl+Option+G on macOS) to pause it during calls.
 - **Accuracy dropped:** recalibrate after moving the monitor, changing seats or changing lighting.
 - **Wrong screen treated as the laptop:** System tab → *Laptop display*.
 - **Logs:** `%APPDATA%\LookHop\lookhop.log`, or `~/Library/Application Support/LookHop/lookhop.log` on macOS (System tab → *Open log*).

@@ -323,7 +323,8 @@ class ControlPanel:
         entry.pack(side="left")
         entry.bind("<Return>", lambda _e: self._apply_hotkey())
         ttk.Button(hk, text="Apply", command=self._apply_hotkey).pack(side="left", padx=6)
-        self.hotkey_msg = ttk.Label(hk, text="e.g. ctrl+alt+g, win+shift+f9", style="Muted.TLabel")
+        self.hotkey_msg = ttk.Label(hk, text=("e.g. ctrl+alt+g (alt = Option), cmd+shift+f9" if sys.platform == "darwin"
+                                 else "e.g. ctrl+alt+g, win+shift+f9"), style="Muted.TLabel")
         self.hotkey_msg.pack(side="left")
         r += 1
 

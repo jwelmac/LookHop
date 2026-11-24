@@ -36,6 +36,15 @@ def make_icon(color: tuple[int, int, int], look: str | None) -> Image.Image:
     return img
 
 
+def hotkey_label(spec: str) -> str:
+    """Human-readable hotkey; on macOS Alt is the Option key and Win is Command."""
+    parts = [p.strip().title() for p in spec.split("+")]
+    if sys.platform == "darwin":
+        names = {"Alt": "Option", "Win": "Cmd", "Ctrl": "Ctrl"}
+        parts = [names.get(p, p) for p in parts]
+    return "+".join(parts)
+
+
 class TrayApp:
     """Tray / menu-bar icon plus the app controller (pause, glasses, hotkey, calibration, panel)."""
     def __init__(self, cfg: Config, engine: Engine):
@@ -196,7 +205,7 @@ class TrayApp:
                 return False, ("Already used by another app, or LookHop lacks the Accessibility "
                                "permission" if sys.platform == "darwin" else
                                "Already used by another app")
-            self.hotkey, self.hotkey_label = hk, spec.title()
+            self.hotkey, self.hotkey_label = hk, hotkey_label(spec)
             return True, ""
 
     def set_hotkey(self, spec: str) -> tuple[bool, str]:
