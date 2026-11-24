@@ -22,7 +22,11 @@ echo "Using $PY"
 
 # Ad-hoc signature (no Developer ID): lets the app run locally and keeps a stable
 # identity for the permissions you grant it. Users still right-click > Open once.
-codesign --force --deep --sign - dist/LookHop.app
+# Set LOOKHOP_SIGN_IDENTITY to a stable code-signing identity (e.g. a self-signed certificate)
+# so macOS keeps the Camera/Accessibility grants across rebuilds. Plain ad-hoc signing ("-")
+# changes the code hash every build, so the grants have to be given again after each update.
+codesign --force --deep --sign "${LOOKHOP_SIGN_IDENTITY:--}" dist/LookHop.app
+codesign --verify --deep --strict dist/LookHop.app
 
 # Smoke-test the build: no camera, no windows; writes selftest.txt in the data folder.
 rc=0
